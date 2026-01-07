@@ -1,65 +1,143 @@
-import Image from "next/image";
+"use client" // Needed for state
+
+import { useState } from "react";
+import UploadZone from "@/components/upload-zone";
+import ComplianceMatrix from "@/components/compliance-matrix";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Github, Shield, Zap, FileSpreadsheet, BarChart3, ChevronLeft } from "lucide-react";
 
 export default function Home() {
+  const [streamData, setStreamData] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  const [view, setView] = useState<'landing' | 'matrix'>('landing');
+
+  const handleFileUpload = async (file: File) => {
+    setView('matrix');
+    setIsScanning(true);
+    setStreamData("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/shred", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.body) return;
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunkValue = decoder.decode(value);
+        setStreamData((prev) => prev + chunkValue);
+      }
+      setIsScanning(false);
+    } catch (error) {
+      console.error("Error streaming data", error);
+      setIsScanning(false);
+      alert("Error processing document. Check console.");
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen grid grid-rows-[auto_1fr_auto] bg-background selection:bg-primary/20 selection:text-primary">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border/40 backdrop-blur-md sticky top-0 z-50">
+        <div className="flex items-center space-x-2">
+          {view === 'matrix' && (
+            <Button variant="ghost" size="icon" onClick={() => setView('landing')} className="mr-2">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <Shield className="w-6 h-6 text-primary" />
+          <span className="text-xl font-bold tracking-tighter text-foreground">GovShred</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-mono uppercase tracking-widest">
+            Beta
+          </span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        <nav className="flex items-center space-x-6 text-sm font-medium text-muted-foreground">
+          <a href="#" className="hover:text-primary transition-colors">Documentation</a>
+          <a href="#" className="hover:text-primary transition-colors">Pricing</a>
+          <Button variant="outline" size="sm" className="gap-2 border-border/50 hover:bg-primary/10 hover:text-primary">
+            <Github className="w-4 h-4" />
+            <span>Star on GitHub</span>
+          </Button>
+        </nav>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex flex-col items-center justify-center p-8 md:p-24 relative overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-primary/20 blur-[120px] rounded-full opacity-20 pointer-events-none" />
+
+        {view === 'landing' ? (
+          <div className="z-10 max-w-4xl w-full space-y-12 text-center">
+            {/* Hero Text */}
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-foreground to-foreground/50">
+                Shred RFPs. <br />
+                <span className="text-primary">Win Contracts.</span>
+              </h1>
+              <p className="max-w-2xl mx-auto text-xl text-muted-foreground leading-relaxed">
+                Upload any Defense RFP. Our Cerebras-powered AI extracts requirements instantly and generates a compliant Excel matrix.
+              </p>
+
+              <div className="flex items-center justify-center gap-4 text-sm font-mono text-muted-foreground/60 pt-4">
+                <span className="flex items-center gap-1.5">
+                  <Zap className="w-3 h-3 text-yellow-500" />
+                  Powered by Cerebras
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <Shield className="w-3 h-3 text-primary" />
+                  ITAR Compliant Workflow
+                </span>
+              </div>
+            </div>
+
+            {/* Upload Zone */}
+            <div className="w-full animate-in fade-in zoom-in duration-1000 delay-200">
+              <UploadZone onFileSelect={handleFileUpload} />
+            </div>
+
+            {/* Features (Social Proof/Metrics) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 border-t border-border/40">
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg bg-card/40 border border-border/50">
+                <Zap className="w-6 h-6 text-primary mb-2" />
+                <h3 className="font-semibold">Instant Analysis</h3>
+                <p className="text-sm text-muted-foreground">Shreds 100+ page PDFs in under 10 seconds.</p>
+              </div>
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg bg-card/40 border border-border/50">
+                <FileSpreadsheet className="w-6 h-6 text-primary mb-2" />
+                <h3 className="font-semibold">Perfect Export</h3>
+                <p className="text-sm text-muted-foreground">Download clean, formatted Excel Compliance Matrices.</p>
+              </div>
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg bg-card/40 border border-border/50">
+                <BarChart3 className="w-6 h-6 text-primary mb-2" />
+                <h3 className="font-semibold">Win Probability</h3>
+                <p className="text-sm text-muted-foreground">AI estimates your P(Win) based on requirements.</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full h-full">
+            <ComplianceMatrix streamData={streamData} isScanning={isScanning} />
+          </div>
+        )}
       </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center text-xs text-muted-foreground border-t border-border/40 bg-background/50 backdrop-blur-md">
+        <p>&copy; 2024 GovShred. Built for Speed.</p>
+      </footer>
     </div>
   );
 }
